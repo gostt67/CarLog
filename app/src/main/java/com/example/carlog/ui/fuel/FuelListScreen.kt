@@ -1,20 +1,18 @@
 package com.example.carlog.ui.fuel
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -26,11 +24,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.carlog.data.FuelEntry
+import com.example.carlog.ui.AppCard
 import com.example.carlog.ui.CURRENCY
+import com.example.carlog.ui.EmptyState
+import com.example.carlog.ui.IconBadge
+import com.example.carlog.ui.InfoChip
 import com.example.carlog.ui.fmtConsumption
 import com.example.carlog.ui.fmtDate
 import com.example.carlog.ui.fmtLiters
@@ -55,28 +56,28 @@ fun FuelListScreen(
     onEdit: (Long) -> Unit
 ) {
     val entries by vm.entries.collectAsStateWithLifecycle()
+    val scheme = MaterialTheme.colorScheme
 
     Scaffold(
+        containerColor = scheme.background,
         floatingActionButton = {
-            FloatingActionButton(onClick = onAdd) {
+            FloatingActionButton(
+                onClick = onAdd,
+                containerColor = scheme.primary,
+                contentColor = scheme.onPrimary,
+                shape = RoundedCornerShape(18.dp)
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Добавить заправку")
             }
         }
     ) { padding ->
         if (entries.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "Заправок пока нет.\nНажмите +, чтобы добавить первую.",
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            EmptyState(
+                icon = Icons.Filled.LocalGasStation,
+                title = "Заправок пока нет",
+                subtitle = "Нажмите «+», чтобы добавить первую.",
+                modifier = Modifier.padding(padding)
+            )
         } else {
             val asc = remember(entries) { entries.sortedBy { it.odometer } }
 
@@ -84,64 +85,80 @@ fun FuelListScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom = 96.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(entries, key = { it.id }) { entry ->
                     val consumption = instantConsumption(asc, entry)
 
-                    ElevatedCard(
+                    AppCard(
                         onClick = { onEdit(entry.id) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(Modifier.padding(16.dp)) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Text(
-                                    fmtDate(entry.date),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
+                                IconBadge(icon = Icons.Filled.LocalGasStation)
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        fmtDate(entry.date),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    if (entry.station.isNotBlank()) {
+                                        Text(
+                                            entry.station,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = scheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                                 Text(
                                     fmtMoney(entry.totalCost),
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = scheme.primary
                                 )
                             }
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "Пробег: ${entry.odometer} км · " +
-                                    "${fmtLiters(entry.liters)} × " +
-                                    "%.2f $CURRENCY/л".format(entry.pricePerLiter),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            if (entry.station.isNotBlank()) {
-                                Text(
-                                    entry.station,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                InfoChip(fmtLiters(entry.liters))
+                                InfoChip("%.2f $CURRENCY/л".format(entry.pricePerLiter))
+                                InfoChip("${entry.odometer} км")
                             }
-                            if (consumption != null) {
-                                Text(
-                                    "Расход: ${fmtConsumption(consumption)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+
+                            if (consumption != null || !entry.fullTank) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (consumption != null) {
+                                        InfoChip(
+                                            text = "Расход: ${fmtConsumption(consumption)}",
+                                            container = scheme.tertiaryContainer,
+                                            content = scheme.onTertiaryContainer
+                                        )
+                                    }
+                                    if (!entry.fullTank) {
+                                        InfoChip(
+                                            text = "Неполный бак",
+                                            container = scheme.secondaryContainer,
+                                            content = scheme.onSecondaryContainer
+                                        )
+                                    }
+                                }
                             }
-                            if (!entry.fullTank) {
-                                Text(
-                                    "Неполный бак — не участвует в расчёте среднего расхода",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+
                             if (entry.note.isNotBlank()) {
                                 Text(
                                     entry.note,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = scheme.onSurfaceVariant
                                 )
                             }
                         }

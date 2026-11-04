@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -58,7 +59,7 @@ fun CarLogApp(factory: CarLogViewModelFactory) {
     Scaffold(
         bottomBar = {
             if (currentRoute in topRoutes) {
-                NavigationBar {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
                     topDestinations.forEach { dest ->
                         NavigationBarItem(
                             selected = currentRoute == dest.route,
